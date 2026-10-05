@@ -1,0 +1,23 @@
+{
+  "$id": "serverest/products-list",
+  "type": "object",
+  "required": ["quantidade", "produtos"],
+  "properties": {
+    "quantidade": { "type": "integer", "minimum": 0 },
+    "produtos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["nome", "preco", "descricao", "quantidade", "_id"],
+        "properties": {
+          "nome": { "type": "string" },
+          "preco": { "type": "number" },
+          "descricao": { "type": "string" },
+          "quantidade": { "type": "number" },
+          "_id": { "type": "string" }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

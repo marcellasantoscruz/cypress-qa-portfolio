@@ -1,0 +1,13 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      cypress:
+        patterns: ['cypress', 'cypress-*', '@cypress/*']
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

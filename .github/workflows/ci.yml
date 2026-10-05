@@ -1,0 +1,110 @@
+name: CI — Cypress QA Portfolio
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 10 * * 1-5' # 07h (BRT), dias úteis — detecta mudanças nos sites-alvo
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'Suite a executar'
+        type: choice
+        options: [all, web, api, security, a11y]
+        default: all
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: 24
+  # A API pública serverest.dev bloqueia (HTTP 429) volumes que pareçam teste de carga.
+  # No CI cada job sobe a própria instância do ServeRest — isolada, rápida e sem rate limit.
+  SERVEREST_START: npx -y serverest@3 --nodoc
+  SERVEREST_URL: http://localhost:3000
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+        env:
+          CYPRESS_INSTALL_BINARY: 0 # lint não precisa do binário do Cypress
+      - run: npm run lint
+
+  dependency-audit:
+    name: Auditoria de dependências (SCA)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: npm audit --audit-level=high
+
+  smoke:
+    name: Smoke
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: cypress-io/github-action@v7
+        with:
+          browser: chrome
+          start: ${{ env.SERVEREST_START }}
+          wait-on: ${{ env.SERVEREST_URL }}/produtos
+          expose: grepTags=@smoke,apiUrl=${{ env.SERVEREST_URL }}
+          summary-title: Smoke
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: report-smoke
+          path: |
+            cypress/reports
+            cypress/screenshots
+          if-no-files-found: ignore
+
+  regression:
+    name: ${{ matrix.suite }} (${{ matrix.browser }})
+    needs: smoke
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { suite: web, browser: chrome, spec: 'cypress/e2e/web/**/*.cy.js' }
+          - { suite: web, browser: firefox, spec: 'cypress/e2e/web/**/*.cy.js' }
+          - { suite: api, browser: electron, spec: 'cypress/e2e/api/**/*.cy.js' }
+          - { suite: security, browser: chrome, spec: 'cypress/e2e/security/**/*.cy.js' }
+          - { suite: a11y, browser: chrome, spec: 'cypress/e2e/accessibility/**/*.cy.js' }
+    steps:
+      - uses: actions/checkout@v7
+      - name: Executar suite ${{ matrix.suite }}
+        if: github.event_name != 'workflow_dispatch' || inputs.suite == 'all' || inputs.suite == matrix.suite
+        uses: cypress-io/github-action@v7
+        with:
+          browser: ${{ matrix.browser }}
+          spec: ${{ matrix.spec }}
+          start: ${{ env.SERVEREST_START }}
+          wait-on: ${{ env.SERVEREST_URL }}/produtos
+          expose: apiUrl=${{ env.SERVEREST_URL }}
+          summary-title: ${{ matrix.suite }} (${{ matrix.browser }})
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: report-${{ matrix.suite }}-${{ matrix.browser }}
+          path: |
+            cypress/reports
+            cypress/screenshots
+          if-no-files-found: ignore
