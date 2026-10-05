@@ -1,6 +1,6 @@
 # Cypress QA Portfolio
 
-[![CI](https://github.com/<seu-usuario>/cypress-qa-portfolio/actions/workflows/ci.yml/badge.svg)](https://github.com/<seu-usuario>/cypress-qa-portfolio/actions/workflows/ci.yml)
+[![CI](https://github.com/marcellasantoscruz/cypress-qa-portfolio/actions/workflows/ci.yml/badge.svg)](https://github.com/<seu-usuario>/cypress-qa-portfolio/actions/workflows/ci.yml)
 ![Cypress](https://img.shields.io/badge/Cypress-15-17202C?logo=cypress)
 ![Node](https://img.shields.io/badge/Node-24-339933?logo=node.js&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-blue)
