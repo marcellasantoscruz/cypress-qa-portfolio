@@ -51,7 +51,29 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - run: npm audit --audit-level=high
+      # Novas vulnerabilidades são publicadas todos os dias. Para o pipeline não quebrar sozinho,
+      # a auditoria bloqueia apenas pull requests; em push e execuções agendadas ela gera um aviso
+      # com o relatório no resumo do job (o Dependabot abre o PR de correção).
+      - name: npm audit (vulnerabilidades altas ou críticas)
+        run: |
+          if npm audit --audit-level=high > audit.txt 2>&1; then
+            echo "### ✅ Auditoria de dependências: nenhuma vulnerabilidade alta ou crítica" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          {
+            echo "### ⚠️ Auditoria de dependências: vulnerabilidades altas ou críticas encontradas"
+            echo '```'
+            cat audit.txt
+            echo '```'
+            echo "Correção: rode \`npm audit fix\` e faça commit do \`package-lock.json\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "::error title=Auditoria de dependências::Vulnerabilidades altas ou críticas encontradas. Rode 'npm audit fix' antes do merge."
+            exit 1
+          fi
+          echo "::warning title=Auditoria de dependências::Vulnerabilidades altas ou críticas encontradas. Veja o resumo do job e rode 'npm audit fix'."
 
   smoke:
     name: Smoke
